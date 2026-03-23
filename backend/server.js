@@ -30,23 +30,43 @@ app.get('/', (req, res) => {
 mqttService.connectToBroker();
 schedulerService.start();
 
-// Database Connection
-if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/dog-feeder', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-    .then(() => {
-      console.log('Connected to MongoDB');
-      if (process.env.NODE_ENV !== 'production') {
-        app.listen(PORT, () => {
-          console.log(`Server running on port ${PORT}`);
-        });
-      }
-    })
-    .catch((err) => {
-      console.error('MongoDB connection error:', err);
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) return;
+  
+  try {
+    const db = await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
+    isConnected = db.connections[0].readyState;
+    console.log('Connected to MongoDB');
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+  }
+};
+
+// Middleware to ensure DB connection
+app.use(async (req, res, next) => {
+  if (process.env.NODE_ENV !== 'test') {
+    await connectDB();
+  }
+  next();
+});
+
+// MQTT and Scheduler initializations
+if (process.env.NODE_ENV !== 'production') {
+  mqttService.connectToBroker();
+  schedulerService.start();
+  
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+} else {
+  // In production (Vercel), we connect to MQTT on-demand or keep it simple
+  // Note: MQTT persistent connection won't work perfectly in serverless functions
+  mqttService.connectToBroker();
 }
 
 module.exports = app;

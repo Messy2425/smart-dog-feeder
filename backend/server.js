@@ -7,11 +7,17 @@ const mqttService = require('./mqtt/mqttService');
 const schedulerService = require('./scheduler/schedulerService');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT, 10) || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Log DB connection status on each request
+app.use((req, res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path} | DB Status: ${mongoose.connection.readyState} (1=Connected)`);
+  next();
+});
 
 // Database Connection
 let isConnected = false;
@@ -46,6 +52,7 @@ app.get('/', (req, res) => {
 });
 
 // MQTT and Scheduler initializations
+/*
 if (process.env.NODE_ENV !== 'production') {
   mqttService.connectToBroker();
   schedulerService.start();
@@ -58,5 +65,19 @@ if (process.env.NODE_ENV !== 'production') {
   // Note: MQTT persistent connection won't work perfectly in serverless functions
   mqttService.connectToBroker();
 }
+*/
+
+// For local testing, force server start
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('SERVER ERROR:', err.stack);
+  res.status(500).json({ message: 'Internal Server Error: ' + err.message });
+});
 
 module.exports = app;

@@ -13,23 +13,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Routes
-const authRoutes = require('./routes/authRoutes');
-const scheduleRoutes = require('./routes/scheduleRoutes');
-const logRoutes = require('./routes/logRoutes');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/schedules', scheduleRoutes);
-app.use('/api/logs', logRoutes);
-
-app.get('/', (req, res) => {
-  res.send('Smart Dog Feeder API is running...');
-});
-
-// MQTT and Scheduler initializations
-mqttService.connectToBroker();
-schedulerService.start();
-
+// Database Connection
 let isConnected = false;
 
 const connectDB = async () => {
@@ -47,12 +31,19 @@ const connectDB = async () => {
   }
 };
 
-// Middleware to ensure DB connection
-app.use(async (req, res, next) => {
-  if (process.env.NODE_ENV !== 'test') {
-    await connectDB();
-  }
-  next();
+connectDB();
+
+// Routes
+const authRoutes = require('./routes/authRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
+const logRoutes = require('./routes/logRoutes');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/schedules', scheduleRoutes);
+app.use('/api/logs', logRoutes);
+
+app.get('/', (req, res) => {
+  res.send('Smart Dog Feeder API is running...');
 });
 
 // MQTT and Scheduler initializations
